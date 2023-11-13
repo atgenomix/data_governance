@@ -1,3 +1,4 @@
+import argparse
 import csv
 import io
 import json
@@ -245,7 +246,21 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
 
 
 def main():
-    # TODO: argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('csv',
+                        help='csv file path.')
+    parser.add_argument('prefix',
+                        help='Folder prefix path.')
+    parser.add_argument('vendor',
+                        help='Vendor name.')
+    parser.add_argument('-t',
+                        '--tags',
+                        nargs='*',
+                        help='tags')
+
+    args = parser.parse_args()
+    handle = csv_preprocess(args.csv)
+    csv_parse(handle, args.prefix, args.vendor, args.tags)
 
     # Archer
     # fh = csv_preprocess('/data/report_mapping/Archer.csv')
@@ -264,9 +279,9 @@ def main():
     # fh = csv_preprocess('./Tumor_Mutation_Load_Assay.csv')
     # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Tumor_Mutation', ['Oncomine'])
 
-    # # Focus
-    fh = csv_preprocess('./Focus_Assay.csv')
-    csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Focus', ['Oncomine'])
+    # Focus
+    # fh = csv_preprocess('./Focus_Assay.csv')
+    # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Focus', ['Oncomine'])
 
 
 if __name__ == '__main__':
