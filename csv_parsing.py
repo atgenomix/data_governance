@@ -138,17 +138,47 @@ def parse_row(sample, path_prefix, vendor, tags):
     mp = info.get_mp()
     pp = info.get_pp()
 
+    report_dir = find_report_dir(path_prefix, vendor, pp, mp)
+    normalize_report_name(report_dir, pp, mp)
+    drs_upload(path_prefix, vendor, f'{report_dir}/*', pp, mp)
+    drs_register(path_prefix, vendor, info, tags)
+
+
+def find_report_dir(path_prefix, vendor, pp: str, mp: str) -> str:
+    if not pp:
+        raise RuntimeError(f"Path No. should not be empty in {vendor}'s excel.")
+
+    if not mp:
+        raise RuntimeError(f"MP No. should not be empty in {vendor}'s excel.")
+
+    dir_name = ''
+    if os.path.exists(os.path.join(path_prefix, vendor, f'{pp}_{mp}')):
+        dir_name = f'{pp}_{mp}'
+    elif os.path.exists(os.path.join(path_prefix, vendor, f'{pp}_({mp})')):
+        dir_name = f'{pp}_({mp})'
+    elif os.path.exists(os.path.join(path_prefix, vendor, f'{mp}_{pp}')):
+        dir_name = f'{mp}_{pp}'
+
+    return os.path.join(path_prefix, vendor, dir_name)
+
+
+def normalize_report_name(report_dir: str, pp: str, mp: str):
     for root, dirs, files in os.walk(report_dir):
         for f in files:
-            if f.endswith('.pdf') and 'BioBank' in f:
+            if f.endswith('.pdf') and 'BioBank' and 'Global' in f:
+                suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency_Global'
+                os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
+            elif f.endswith('.pdf') and 'BioBank' in f:
                 suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency'
                 os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
             elif f.endswith('.pdf'):
                 os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}.pdf'))
 
+
+def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
     id = f"{pp}_{mp}"
     cmd = 'seqslab datahub upload --src "{0}" --dst {3}/{1}/ --workspace vghtpe > {2}/{1}_tmp.json'.format(
-        f"{path_prefix}/{vendor}/{src}",
+        f"{path_prefix}/{vendor}/{report_dir}",
         f"{id}",
         f"{path_prefix}/{vendor}",
         f"{vendor}")
@@ -158,44 +188,52 @@ def parse_row(sample, path_prefix, vendor, tags):
     print(cmd)
     print(f'subprocess for upload ret {ret}')
 
+
+def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
+    mp = info.get_mp()
+    pp = info.get_pp()
+    id = f"{pp}_{mp}"
+
     with open(f'{path_prefix}/{vendor}/{id}_tmp.json', 'r') as f:
-        pls = json.load(f)
-        for pl in pls:
-            pl['id'] = f"drs_{id}"
-            pl['metadata'] = {
-                "types": [],
-                "extra_properties": [
-                    {"category": "MP_No", "values": [mp]},
-                    {"category": "Path_No", "values": [pp]},
-                    {"category": "Patient_Name", "values": [patient]},
-                    {"category": "Tumor_Purity", "values": [tumor_purity]},
-                    {"category": "Diagnosis", "values": [diagnosis]},
-                    {"category": "test_item", "values": [test_item]},
-                    {"category": "Physician", "values": [physician]},
-                    {"category": "Turn_Around_time", "values": [tat]},
+        payloads = json.load(f)
+        for p in payloads:
+            p['id'] = f'drs_{id}'
+            p['tags'] = tags + [vendor]
+            p['metadata'] = {
+                'types': [],
+                'extra_properties': [
+                    {'category': 'MP_No', 'values': [mp]},
+                    {'category': 'Path_No', 'values': [pp]},
+                    {'category': 'Patient_Name', 'values': [info.get_patient()]},
+                    {'category': 'Tumor_Purity', 'values': [info.get_tumor_purity()]},
+                    {'category': 'Diagnosis', 'values': [info.get_diagnosis()]},
+                    {'category': 'test_item', 'values': [info.get_test_item()]},
+                    {'category': 'Physician', 'values': [info.get_physician()]},
+                    {'category': 'Turn_Around_time', 'values': [info.get_turnaround_time()]},
                 ],
-                "dates": [
-                    {"date": sign_date, "type": {"value": "Time of Report Signed"}},
-                    {"date": report_date, "type": {"value": "Time of VGH Report"}}
+                'dates': [
+                    {'date': info.get_sign_date(), 'type': {'value': 'Time of Report Signed'}},
+                    {'date': info.get_report_date(), 'type': {'value': 'Time of VGH Report'}}
                 ],
-                "alternate_identifiers": [],
-                "contributors": [],
-                "licenses": []
+                'alternate_identifiers': [],
+                'contributors': [],
+                'licenses': []
             }
+
+            receive_date = info.get_receive_date()
             if receive_date:
-                pl['metadata']['dates'].append({"date": receive_date, "type": {"value": "Time of Collection"}})
-            pl['tags'] = tags + [vendor]
-        if len(pls) == 1:
-            name = pls[0]['name']
+                p['metadata']['dates'].append({'date': receive_date, 'type': {'value': 'Time of Collection'}})
+
+        if len(payloads) == 1:
+            name = payloads[0]['name']
             n = name.split('.')[0]
-            pls[0]['name'] = n
-            pls[0]['aliases'] = [n]
-            url = pls[0]['access_methods'][0]['access_url']['url']
+            payloads[0]['name'] = n
+            payloads[0]['aliases'] = [n]
+            url = payloads[0]['access_methods'][0]['access_url']['url']
             u = os.path.dirname(url)
-            pls[0]['access_methods'][0]['access_url']['url'] = u
-        # print(pl['metadata']['extra_properties'][2])
+            payloads[0]['access_methods'][0]['access_url']['url'] = u
         with open(f'{path_prefix}/{vendor}/{id}_upload.json', 'w') as f:
-            json.dump(pls, f, indent=4, ensure_ascii=False, )
+            json.dump(payloads, f, indent=4, ensure_ascii=False, )
 
     cmd = 'seqslab datahub register-blob dir-blob --stdin < {0} --workspace vghtpe > {1}'.format(
         f'{path_prefix}/{vendor}/{id}_upload.json',
