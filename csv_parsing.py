@@ -244,19 +244,9 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
     print(f'subprocess for register drs object drs_{id} ret {ret}')
 
 
-# guaradant360
-# fh = csv_preprocess(guardant360_path)
-# csv_parse(fh, '/data', guardant360_PREFIX)
-
-# ACTG
-# fh = csv_preprocess(ACTG_path)
-# csv_parse(fh, '/data', ACTG_PREFIX)
-
-# Foundation
-# fh = csv_preprocess(foundation_path)
-# csv_parse(fh, '/data', foundation_PREFIX)
-
 def main():
+    # TODO: argparse
+
     # Archer
     # fh = csv_preprocess('/data/report_mapping/Archer.csv')
     # fh = csv_preprocess('./Archer.csv')
@@ -279,7 +269,5 @@ def main():
     csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Focus', ['Oncomine'])
 
 
-
 if __name__ == '__main__':
     main()
-# /mnt/data/tpevghngsdatabase_tpevghngsblob/elefatfly/ACTG/M111-10004_(PT22083)/M111-10004_(PT22083).txt'
