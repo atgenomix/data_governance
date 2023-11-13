@@ -17,6 +17,75 @@ archer_PREFIX = 'Archer'
 oncomine_PREFIX = 'Oncomine'
 
 
+class SampleInfo:
+    def __init__(self, sample):
+        self._mp = sample.get('MP. No.', '').strip()
+        self._pp = sample.get('Path. No.', '').strip()
+        self._patient = sample.get('Patient', '').strip()
+        self._history_no = sample.get('History No.', '').strip()
+        self._block_no = sample.get('Block No.', '').strip()
+        self._tumor_purity = sample.get('Tumor %', '').strip()
+        self._diagnosis = sample.get('Diagnosis', '').strip()
+        self._test_item = sample.get('檢測項目', '').strip()
+        self._physician = sample.get('主治醫師', '').strip()
+
+        self._year = int(self._pp.split('-')[0][1:]) + 1911
+        self._receive_date = self.__get_date(sample, '取件日')
+        self._sign_date = self.__get_date(sample, '簽收日')
+        self._report_date = self.__get_date(sample, '報告日')
+
+        self._tat = sample.get('TAT', '').strip()
+
+    def __get_date(self, row, column_name: str):
+        r = row.get(column_name, '').strip()
+        if '月' in r:
+            month = r.split('月')[0]
+            day = month.split('日')[0]
+            r = f'{month}/{day}'
+            return create_date_obj(f"{self._year}/{r}")
+        else:
+            return create_date_obj(r)
+
+    def get_mp(self):
+        return self._mp
+
+    def get_pp(self):
+        return self._pp
+
+    def get_patient(self):
+        return self._patient
+
+    def get_history_no(self):
+        return self._history_no
+
+    def get_block_no(self):
+        return self._block_no
+
+    def get_tumor_purity(self):
+        return self._tumor_purity
+
+    def get_diagnosis(self):
+        return self._diagnosis
+
+    def get_test_item(self):
+        return self._test_item
+
+    def get_physician(self):
+        return self._physician
+
+    def get_receive_date(self):
+        return self._receive_date
+
+    def get_sign_date(self):
+        return self._sign_date
+
+    def get_report_date(self):
+        return self._report_date
+
+    def get_turnaround_time(self):
+        return self._tat
+
+
 def csv_preprocess(file_path):
     # Preprocess the file to remove '^M' characters
     processed_lines = []
@@ -65,53 +134,10 @@ def create_date_obj(input_time):
 
 
 def parse_row(sample, path_prefix, vendor, tags):
-    mp = sample.get('MP. No.', '').strip()
-    pp = sample.get('Path. No.', '').strip()
-    patient = sample.get('Patient', '').strip()
-    history_no = sample.get('History No.', '').strip()
-    block_no = sample.get('Block No.', '').strip()
-    tumor_purity = sample.get('Tumor %', '').strip()
-    diagnosis = sample.get('Diagnosis', '').strip()
-    test_item = sample.get('檢測項目', '').strip()
-    physician = sample.get('主治醫師', '').strip()
+    info = SampleInfo(sample)
+    mp = info.get_mp()
+    pp = info.get_pp()
 
-    year = int(pp.split('-')[0][1:]) + 1911
-    r = sample.get('取件日', '').strip()
-    if '月' in r:
-        month = r.split('月')[0]
-        day = month.split('日')[0]
-        r = f'{month}/{day}'
-        receive_date = create_date_obj(f"{year}/{r}")
-    else:
-        receive_date = create_date_obj(r)
-
-    s = sample.get('簽收日', '').strip()
-    if '月' in s:
-        month = s.split('月')[0]
-        day = month.split('日')[0]
-        s = f'{month}/{day}'
-        sign_date = create_date_obj(f"{year}/{s}")
-    else:
-        sign_date = create_date_obj(s)
-
-    rd = sample.get('報告日', '').strip()
-    if '月' in rd:
-        month = rd.split('月')[0]
-        day = month.split('日')[0]
-        rd = f'{month}/{day}'
-        report_date = create_date_obj(f"{year}/{rd}")
-    else:
-        report_date = create_date_obj(rd)
-
-    tat = sample.get('TAT', '').strip()
-
-    # src = f"/{pp}_({mp})/{pp}_({mp}).*"
-    src = f"{mp}_{pp}/*"
-    report_dir = os.path.join(path_prefix, vendor, f'{mp}_{pp}')
-    print(report_dir)
-    if not os.path.exists(report_dir):
-        src = f"{mp}/*"
-        report_dir = os.path.join(path_prefix, vendor, f'{mp}')
     for root, dirs, files in os.walk(report_dir):
         for f in files:
             if f.endswith('.pdf') and 'BioBank' in f:
