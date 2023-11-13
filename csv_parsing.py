@@ -22,6 +22,13 @@ class SampleInfo:
     def __init__(self, sample):
         self._mp = sample.get('MP. No.', '').strip()
         self._pp = sample.get('Path. No.', '').strip()
+
+        if not self._mp:
+            raise RuntimeError(f"MP No. should not be empty.")
+
+        if not self._pp:
+            raise RuntimeError(f"Path No. should not be empty.")
+
         self._patient = sample.get('Patient', '').strip()
         self._history_no = sample.get('History No.', '').strip()
         self._block_no = sample.get('Block No.', '').strip()
@@ -146,12 +153,6 @@ def parse_row(sample, path_prefix, vendor, tags):
 
 
 def find_report_dir(path_prefix, vendor, pp: str, mp: str) -> str:
-    if not pp:
-        raise RuntimeError(f"Path No. should not be empty in {vendor}'s excel.")
-
-    if not mp:
-        raise RuntimeError(f"MP No. should not be empty in {vendor}'s excel.")
-
     dir_name = ''
     if os.path.exists(os.path.join(path_prefix, vendor, f'{pp}_{mp}')):
         dir_name = f'{pp}_{mp}'
