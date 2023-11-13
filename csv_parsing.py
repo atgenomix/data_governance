@@ -4,6 +4,7 @@ import io
 import json
 import os.path
 import subprocess
+import traceback
 from datetime import datetime
 import pytz
 
@@ -37,12 +38,15 @@ class SampleInfo:
         self._test_item = sample.get('檢測項目', '').strip()
         self._physician = sample.get('主治醫師', '').strip()
 
-        self._year = int(self._pp.split('-')[0][1:]) + 1911
-        self._receive_date = self.__get_date(sample, '取件日')
-        self._sign_date = self.__get_date(sample, '簽收日')
-        self._report_date = self.__get_date(sample, '報告日')
+        try:
+            self._year = int(self._pp.split('-')[0][1:]) + 1911
+            self._receive_date = self.__get_date(sample, '取件日')
+            self._sign_date = self.__get_date(sample, '簽收日')
+            self._report_date = self.__get_date(sample, '報告日')
 
-        self._tat = sample.get('TAT', '').strip()
+            self._tat = sample.get('TAT', '').strip()
+        except Exception:
+            raise RuntimeError(f'Parse year/date failed, Path No.: {self._pp}, MP No.: {self._mp}')
 
     def __get_date(self, row, column_name: str):
         r = row.get(column_name, '').strip()
@@ -118,14 +122,19 @@ def csv_parse(processed_file, path_prefix, vendor, tags):
     header_fields = reader.fieldnames
 
     # Iterate over the rows in the CSV file
+    succeed = 0
+    failed = 0
     for row in reader:
         # Access and process the row data
         try:
             parse_row(row, path_prefix, vendor, tags)
-        # break
-        except Exception as e:
-            print(e)
+            succeed += 1
+        except Exception:
+            failed += 1
+            traceback.print_exc()
             continue
+
+    print(f'{vendor}: succeed: {succeed}, failed: {failed}')
 
 
 def create_date_obj(input_time):
@@ -133,7 +142,7 @@ def create_date_obj(input_time):
         date_obj = datetime.strptime(input_time, "%Y/%m/%d")
     except Exception as e:
         print(e)
-        return ""
+        return ''
     # Convert the datetime object to the desired time zone
     timezone = pytz.timezone("Asia/Taipei")
     date_obj = timezone.localize(date_obj)
@@ -153,28 +162,32 @@ def parse_row(sample, path_prefix, vendor, tags):
 
 
 def find_report_dir(path_prefix, vendor, pp: str, mp: str) -> str:
-    dir_name = ''
     if os.path.exists(os.path.join(path_prefix, vendor, f'{pp}_{mp}')):
         dir_name = f'{pp}_{mp}'
     elif os.path.exists(os.path.join(path_prefix, vendor, f'{pp}_({mp})')):
         dir_name = f'{pp}_({mp})'
     elif os.path.exists(os.path.join(path_prefix, vendor, f'{mp}_{pp}')):
         dir_name = f'{mp}_{pp}'
+    else:
+        raise RuntimeError(f'find_report_dir() failed, Path No.: {pp}, MP No.: {mp}')
 
     return os.path.join(path_prefix, vendor, dir_name)
 
 
 def normalize_report_name(report_dir: str, pp: str, mp: str):
-    for root, dirs, files in os.walk(report_dir):
+    for root, _, files in os.walk(report_dir):
         for f in files:
-            if f.endswith('.pdf') and 'BioBank' and 'Global' in f:
-                suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency_Global'
-                os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
-            elif f.endswith('.pdf') and 'BioBank' in f:
-                suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency'
-                os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
-            elif f.endswith('.pdf'):
-                os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}.pdf'))
+            try:
+                if f.endswith('.pdf') and 'BioBank' and 'Global' in f:
+                    suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency_Global'
+                    os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
+                elif f.endswith('.pdf') and 'BioBank' in f:
+                    suffix = 'Exclude_variant_in_Taiwan_BioBank_with_over_1_percent_allele_frequency'
+                    os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}_{suffix}.pdf'))
+                elif f.endswith('.pdf'):
+                    os.rename(os.path.join(root, f), os.path.join(root, f'{pp}_{mp}.pdf'))
+            except Exception:
+                raise RuntimeError(f'normalize_report_name() failed, Path No.: {pp}, MP No.: {mp}')
 
 
 def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
@@ -190,52 +203,62 @@ def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str)
     print(cmd)
     print(f'subprocess for upload ret {ret}')
 
+    if ret != 0:
+        raise RuntimeError(f'drs_upload() failed, Path No.: {pp}, MP No.: {mp}')
+
 
 def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
     mp = info.get_mp()
     pp = info.get_pp()
     id = f"{pp}_{mp}"
 
-    with open(f'{path_prefix}/{vendor}/{id}_tmp.json', 'r') as f:
-        payloads = json.load(f)
-        for p in payloads:
-            p['id'] = f'drs_{id}'
-            p['tags'] = tags + [vendor]
-            p['metadata'] = {
-                'types': [],
-                'extra_properties': [
-                    {'category': 'MP_No', 'values': [mp]},
-                    {'category': 'Path_No', 'values': [pp]},
-                    {'category': 'Patient_Name', 'values': [info.get_patient()]},
-                    {'category': 'Tumor_Purity', 'values': [info.get_tumor_purity()]},
-                    {'category': 'Diagnosis', 'values': [info.get_diagnosis()]},
-                    {'category': 'test_item', 'values': [info.get_test_item()]},
-                    {'category': 'Physician', 'values': [info.get_physician()]},
-                    {'category': 'Turn_Around_time', 'values': [info.get_turnaround_time()]},
-                ],
-                'dates': [
-                    {'date': info.get_sign_date(), 'type': {'value': 'Time of Report Signed'}},
-                    {'date': info.get_report_date(), 'type': {'value': 'Time of VGH Report'}}
-                ],
-                'alternate_identifiers': [],
-                'contributors': [],
-                'licenses': []
-            }
+    try:
+        with open(f'{path_prefix}/{vendor}/{id}_tmp.json', 'r') as f:
+            payloads = json.load(f)
+            for p in payloads:
+                p['id'] = f'drs_{id}'
+                p['tags'] = tags + [vendor]
+                p['metadata'] = {
+                    'types': [],
+                    'extra_properties': [
+                        {'category': 'MP_No', 'values': [mp]},
+                        {'category': 'Path_No', 'values': [pp]},
+                        {'category': 'Patient_Name', 'values': [info.get_patient()]},
+                        {'category': 'Tumor_Purity', 'values': [info.get_tumor_purity()]},
+                        {'category': 'Diagnosis', 'values': [info.get_diagnosis()]},
+                        {'category': 'test_item', 'values': [info.get_test_item()]},
+                        {'category': 'Physician', 'values': [info.get_physician()]},
+                        {'category': 'Turn_Around_time', 'values': [info.get_turnaround_time()]},
+                    ],
+                    'alternate_identifiers': [],
+                    'contributors': [],
+                    'licenses': []
+                }
 
-            receive_date = info.get_receive_date()
-            if receive_date:
-                p['metadata']['dates'].append({'date': receive_date, 'type': {'value': 'Time of Collection'}})
+                receive_date = info.get_receive_date()
+                if receive_date:
+                    p['metadata']['dates'].append({'date': receive_date, 'type': {'value': 'Time of Collection'}})
 
-        if len(payloads) == 1:
-            name = payloads[0]['name']
-            n = name.split('.')[0]
-            payloads[0]['name'] = n
-            payloads[0]['aliases'] = [n]
-            url = payloads[0]['access_methods'][0]['access_url']['url']
-            u = os.path.dirname(url)
-            payloads[0]['access_methods'][0]['access_url']['url'] = u
-        with open(f'{path_prefix}/{vendor}/{id}_upload.json', 'w') as f:
-            json.dump(payloads, f, indent=4, ensure_ascii=False, )
+                sign_date = info.get_sign_date()
+                if sign_date:
+                    p['metadata']['dates'].append({'date': sign_date, 'type': {'value': 'Time of Report Signed'}})
+
+                report_date = info.get_report_date()
+                if report_date:
+                    p['metadata']['dates'].append({'date': report_date, 'type': {'value': 'Time of VGH Report'}})
+
+            if len(payloads) == 1:
+                name = payloads[0]['name']
+                n = name.split('.')[0]
+                payloads[0]['name'] = n
+                payloads[0]['aliases'] = [n]
+                url = payloads[0]['access_methods'][0]['access_url']['url']
+                u = os.path.dirname(url)
+                payloads[0]['access_methods'][0]['access_url']['url'] = u
+            with open(f'{path_prefix}/{vendor}/{id}_upload.json', 'w') as f:
+                json.dump(payloads, f, indent=4, ensure_ascii=False, )
+    except Exception:
+        raise RuntimeError(f'drs_register() failed, Path No.: {pp}, MP No.: {mp}')
 
     cmd = 'seqslab datahub register-blob dir-blob --stdin < {0} --workspace vghtpe > {1}'.format(
         f'{path_prefix}/{vendor}/{id}_upload.json',
@@ -244,6 +267,9 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
 
     print(cmd)
     print(f'subprocess for register drs object drs_{id} ret {ret}')
+
+    if ret != 0:
+        raise RuntimeError(f'drs_register() failed, Path No.: {pp}, MP No.: {mp}')
 
 
 def main():
