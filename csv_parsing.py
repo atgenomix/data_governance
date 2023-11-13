@@ -195,7 +195,7 @@ def normalize_report_name(report_dir: str, pp: str, mp: str):
 def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
     id = f"{pp}_{mp}"
     cmd = 'seqslab datahub upload --src "{0}" --dst {3}/{1}/ --workspace vghtpe > {2}/{1}_tmp.json'.format(
-        f"{path_prefix}/{vendor}/{report_dir}/*",
+        f"{report_dir}/*",
         f"{id}",
         f"{path_prefix}/{vendor}",
         f"{vendor}")
