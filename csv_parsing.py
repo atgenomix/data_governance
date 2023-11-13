@@ -40,7 +40,9 @@ class SampleInfo:
 
         try:
             self._year = int(self._pp.split('-')[0][1:]) + 1911
-            self._receive_date = self.__get_date(sample, '取件日')
+            self._receive_date = self.__get_date(sample, '採檢日')
+            if not self._receive_date:
+                self._receive_date = self.__get_date(sample, '取件日')
             self._sign_date = self.__get_date(sample, '簽收日')
             self._report_date = self.__get_date(sample, '報告日')
 
