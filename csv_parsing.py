@@ -120,7 +120,7 @@ def csv_parse(processed_file, path_prefix, vendor, tags):
         tags = []
 
     # Parse the CSV file
-    reader = csv.DictReader(processed_file, delimiter='\t')
+    reader = csv.DictReader(processed_file)
     header_fields = reader.fieldnames
 
     # Iterate over the rows in the CSV file
