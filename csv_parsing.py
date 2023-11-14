@@ -281,7 +281,7 @@ def main():
     parser.add_argument('prefix',
                         help='Folder prefix path.')
     parser.add_argument('vendor',
-                        help='Vendor name.')
+                        help='Vendor folder name.')
     parser.add_argument('-t',
                         '--tags',
                         nargs='*',
