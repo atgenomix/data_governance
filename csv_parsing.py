@@ -219,7 +219,7 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
             payloads = json.load(f)
             for p in payloads:
                 p['id'] = f'drs_{id}'
-                p['tags'] = tags + [vendor]
+                p['tags'] = tags
                 p['metadata'] = {
                     'types': [],
                     'extra_properties': [
@@ -290,27 +290,6 @@ def main():
     args = parser.parse_args()
     handle = csv_preprocess(args.csv)
     csv_parse(handle, args.prefix, args.vendor, args.tags)
-
-    # Archer
-    # fh = csv_preprocess('/data/report_mapping/Archer.csv')
-    # fh = csv_preprocess('./Archer.csv')
-    # csv_parse(fh, '/seqslab/report_2_NGS', archer_PREFIX)
-
-    # BRCA
-    # fh = csv_preprocess('./BRCA_Assay.csv')
-    # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'BRCA', ['Oncomine'])
-    
-    # Myeloid
-    # fh = csv_preprocess('./Myeloid_Assay.csv')
-    # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Myeloid', ['Oncomine'])
-    
-    # Tumor Mutation
-    # fh = csv_preprocess('./Tumor_Mutation_Load_Assay.csv')
-    # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Tumor_Mutation', ['Oncomine'])
-
-    # Focus
-    # fh = csv_preprocess('./Focus_Assay.csv')
-    # csv_parse(fh, '/seqslab/report_2_NGS/Oncomine', 'Focus', ['Oncomine'])
 
 
 if __name__ == '__main__':
