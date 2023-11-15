@@ -9,19 +9,19 @@ given a folder structure:
 ```
 report_NGS
 	- ARCHER
-	- BRCA
+	- BRCA Assay
 		- BRCA_Assay.csv
 		- S109-89667_BR20002
 		- S109-89713_BR20003
 		- ...
-	- Focus
-	- Myeloid
-	- Tumor Mutation Load
+	- Focus Assay
+	- Myeloid Assay
+	- Tumor Mutation Load Assay
 ```
-the following cmd will upload and register all the reports under BRCA folder to Seqslab platform and set `BRCA` and `Oncomine` as tags	for each report
+the following cmd will upload and register all the reports under BRCA Assay folder to Seqslab platform and set `BRCA` and `Oncomine` as tags for each report
 
 ```
-python3 csv_parsing.py ./report_NGS/BRCA/BRCA_Assay.csv ./report_NGS BRCA -t Oncomine
+python3 csv_parsing.py "./report_NGS/BRCA Assay/BRCA_Assay.csv" ./report_NGS "BRCA Assay" -t BRCA Oncomine
 ```
 
 
