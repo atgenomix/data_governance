@@ -194,7 +194,7 @@ def normalize_report_name(report_dir: str, pp: str, mp: str):
 
 def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
     id = f"{pp}_{mp}"
-    cmd = 'seqslab datahub upload --src "{0}" --dst "{3}/{1}/" --workspace vghtpe > {2}/{1}_tmp.json'.format(
+    cmd = 'seqslab datahub upload --src "{0}" --dst "{3}/{1}/" --workspace vghtpe > "{2}/{1}_tmp.json"'.format(
         f"{report_dir}/*",
         f"{id}",
         f"{path_prefix}/{vendor}",
@@ -262,7 +262,7 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
     except Exception:
         raise RuntimeError(f'drs_register() failed, Path No.: {pp}, MP No.: {mp}')
 
-    cmd = 'seqslab datahub register-blob dir-blob --stdin < {0} --workspace vghtpe > {1}'.format(
+    cmd = 'seqslab datahub register-blob dir-blob --stdin < "{0}" --workspace vghtpe > "{1}"'.format(
         f'{path_prefix}/{vendor}/{id}_upload.json',
         f'{path_prefix}/{vendor}/{id}_register.json')
     ret = subprocess.call(cmd, shell=True)
