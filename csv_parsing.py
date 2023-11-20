@@ -40,18 +40,21 @@ class SampleInfo:
 
         try:
             self._year = int(self._pp.split('-')[0][1:]) + 1911
-            self._receive_date = self.__get_date(sample, '採檢日')
+            self._receive_date = self.__get_date(sample, '採檢日', '採檢')
             if not self._receive_date:
-                self._receive_date = self.__get_date(sample, '取件日')
-            self._sign_date = self.__get_date(sample, '簽收日')
-            self._report_date = self.__get_date(sample, '報告日')
+                self._receive_date = self.__get_date(sample, '取件日', '取件')
+            self._sign_date = self.__get_date(sample, '簽收日', '簽收')
+            self._report_date = self.__get_date(sample, '報告日', '報告')
 
             self._tat = sample.get('TAT', '').strip()
         except Exception:
             raise RuntimeError(f'Parse year/date failed, Path No.: {self._pp}, MP No.: {self._mp}')
 
-    def __get_date(self, row, column_name: str):
+    def __get_date(self, row, column_name: str, column_name_2: str):
         r = row.get(column_name, '').strip()
+        if not r:
+            r = row.get(column_name_2, '').strip()
+
         if '月' in r:
             month = r.split('月')[0]
             day = month.split('日')[0]
