@@ -4,13 +4,16 @@ import subprocess
 import sys
 
 
-def drs_upload(workspace: str, src: str, dst: str):
+def drs_upload(workspace: str, src: str, dst: str, recursive: bool):
     file_name = os.path.basename(src)
-    cmd = 'seqslab datahub upload --src "{0}" --dst "{1}" --workspace {3} > "{2}_tmp.json"'.format(
+    cmd = 'seqslab datahub upload --src "{0}" --dst "{1}" --workspace {2}'.format(
         src,
-        dst,
-        file_name,
+        f'{dst}/' if recursive else dst,
         workspace)
+    if recursive:
+        cmd += ' -r  > "{}_tmp.json"'.format(file_name)
+    else:
+        cmd += ' -r  > "{}_tmp.json"'.format(file_name)
 
     ret = subprocess.call(cmd, shell=True)
 
@@ -100,43 +103,35 @@ def main():
     path_prefix = sys.argv[1]
     workspace = sys.argv[2]
     resources = ['hg19.fa', 'hg19.fa.fai', 'Ens_to_NM.tab', 'genes.refGene', 'transcript_cds.json']
-    embedding_models = ['icd_o_128_embeddings.parquet', 'icd10cm_128_embeddings.parquet']
     sentence_transformer_models = ['icd_o_sentence_transformer_128_dim_model', 'sentence_transformer_128_dim_model']
 
     print('start upload & register resources')
     for r in resources:
         src = os.path.join(path_prefix, r)
         dst = os.path.join('/report-parser', r)
-        drs_upload(workspace, src, dst)
+        drs_upload(workspace, src, dst, False)
         drs_register(workspace, src, 'file-blob', ['report-parser'])
-
-    print('start upload & register embedding_models')
-    for m in embedding_models:
-        src = os.path.join(path_prefix, m)
-        dst = os.path.join('/embedding_models', m)
-        drs_upload(workspace, src, dst)
-        drs_register(workspace, src, 'dir-blob', ['embedding_models'])
 
     print('start upload & register sentence_transformer_models')
     for m in sentence_transformer_models:
         src = os.path.join(path_prefix, m)
         dst = os.path.join('/sentence_transformer_models', m)
-        drs_upload(workspace, src, dst)
+        drs_upload(workspace, src, dst, True)
         drs_register(workspace, src, 'dir-blob', ['sentence_transformer_models'])
 
-    print('start upload & register TRS')
-    trs_create('report-parser', 'Parse Oncology PDF reports, add ICD-10 and ICD-O for diagnosis', 'report-parser')
-
-    tool_id = 'trs_report-parser'
-    image_name = ''
-    registry = ''
-    size = 0
-    checksum = ''
-    trs_version(workspace, tool_id, '1.0', image_name, registry, size, checksum)
-
-    working_dir = ''
-    exec_json = ''
-    trs_register(tool_id, '1.0', working_dir, exec_json)
+    # print('start upload & register TRS')
+    # trs_create('report-parser', 'Parse Oncology PDF reports, add ICD-10 and ICD-O for diagnosis', 'report-parser')
+    #
+    # tool_id = 'trs_report-parser'
+    # image_name = ''
+    # registry = ''
+    # size = 0
+    # checksum = ''
+    # trs_version(workspace, tool_id, '1.0', image_name, registry, size, checksum)
+    #
+    # working_dir = '`pwd`/seqslab-workflows'
+    # exec_json = ''
+    # trs_register(tool_id, '1.0', working_dir, exec_json)
 
     print('Installation complete.')
 
