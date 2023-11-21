@@ -1,3 +1,8 @@
+## Prerequisite
+```
+pip install pytz
+```
+
 ## Usage
 ```
 python3 csv_parsing.py WORKSPACE PATH_TO_CSV ROOT_DIR VENDOR_DIR -t TAG_1, TAG_2
