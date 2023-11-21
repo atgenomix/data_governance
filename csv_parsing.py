@@ -118,7 +118,7 @@ def csv_preprocess(file_path):
     return processed_file
 
 
-def csv_parse(processed_file, path_prefix, vendor, tags):
+def csv_parse(workspace, processed_file, path_prefix, vendor, tags):
     if tags is None:
         tags = []
 
@@ -132,7 +132,7 @@ def csv_parse(processed_file, path_prefix, vendor, tags):
     for row in reader:
         # Access and process the row data
         try:
-            parse_row(row, path_prefix, vendor, tags)
+            parse_row(workspace, row, path_prefix, vendor, tags)
             succeed += 1
         except Exception:
             failed += 1
@@ -155,15 +155,15 @@ def create_date_obj(input_time):
     return date_obj.strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
-def parse_row(sample, path_prefix, vendor, tags):
+def parse_row(workspace, sample, path_prefix, vendor, tags):
     info = SampleInfo(sample)
     mp = info.get_mp()
     pp = info.get_pp()
 
     report_dir = find_report_dir(path_prefix, vendor, pp, mp)
     normalize_report_name(report_dir, pp, mp)
-    drs_upload(path_prefix, vendor, report_dir, pp, mp)
-    drs_register(path_prefix, vendor, info, tags)
+    drs_upload(workspace, path_prefix, vendor, report_dir, pp, mp)
+    drs_register(workspace, path_prefix, vendor, info, tags)
 
 
 def find_report_dir(path_prefix, vendor, pp: str, mp: str) -> str:
@@ -195,13 +195,14 @@ def normalize_report_name(report_dir: str, pp: str, mp: str):
                 raise RuntimeError(f'normalize_report_name() failed, Path No.: {pp}, MP No.: {mp}')
 
 
-def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
+def drs_upload(workspace: str, path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str):
     id = f"{pp}_{mp}"
-    cmd = 'seqslab datahub upload --src "{0}" --dst "{3}/{1}/" --workspace vghtpe > "{2}/{1}_tmp.json"'.format(
+    cmd = 'seqslab datahub upload --src "{0}" --dst "{3}/{1}/" --workspace {4} > "{2}/{1}_tmp.json"'.format(
         f"{report_dir}/*",
-        f"{id}",
+        id,
         f"{path_prefix}/{vendor}",
-        f"{vendor}")
+        vendor,
+        workspace)
 
     ret = subprocess.call(cmd, shell=True)
 
@@ -212,7 +213,7 @@ def drs_upload(path_prefix: str, vendor: str, report_dir: str, pp: str, mp: str)
         raise RuntimeError(f'drs_upload() failed, Path No.: {pp}, MP No.: {mp}')
 
 
-def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
+def drs_register(workspace: str, path_prefix: str, vendor: str, info: SampleInfo, tags):
     mp = info.get_mp()
     pp = info.get_pp()
     id = f"{pp}_{mp}"
@@ -265,9 +266,10 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
     except Exception:
         raise RuntimeError(f'drs_register() failed, Path No.: {pp}, MP No.: {mp}')
 
-    cmd = 'seqslab datahub register-blob dir-blob --stdin < "{0}" --workspace vghtpe > "{1}"'.format(
+    cmd = 'seqslab datahub register-blob dir-blob --stdin < "{0}" --workspace {2} > "{1}"'.format(
         f'{path_prefix}/{vendor}/{id}_upload.json',
-        f'{path_prefix}/{vendor}/{id}_register.json')
+        f'{path_prefix}/{vendor}/{id}_register.json',
+        workspace)
     ret = subprocess.call(cmd, shell=True)
 
     print(cmd)
@@ -279,6 +281,8 @@ def drs_register(path_prefix: str, vendor: str, info: SampleInfo, tags):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('workspace',
+                        help='workspace.')
     parser.add_argument('csv',
                         help='csv file path.')
     parser.add_argument('prefix',
@@ -292,7 +296,7 @@ def main():
 
     args = parser.parse_args()
     handle = csv_preprocess(args.csv)
-    csv_parse(handle, args.prefix, args.vendor, args.tags)
+    csv_parse(handle, args.workspace, args.prefix, args.vendor, args.tags)
 
 
 if __name__ == '__main__':
