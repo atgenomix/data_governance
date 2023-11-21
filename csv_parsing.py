@@ -296,7 +296,7 @@ def main():
 
     args = parser.parse_args()
     handle = csv_preprocess(args.csv)
-    csv_parse(handle, args.workspace, args.prefix, args.vendor, args.tags)
+    csv_parse(args.workspace, handle, args.prefix, args.vendor, args.tags)
 
 
 if __name__ == '__main__':
