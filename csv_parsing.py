@@ -225,6 +225,7 @@ def drs_register(workspace: str, path_prefix: str, vendor: str, info: SampleInfo
                 p['id'] = f'drs_{id}'
                 p['tags'] = tags
                 p['metadata'] = {
+                    'dates': [],
                     'types': [],
                     'extra_properties': [
                         {'category': 'MP_No', 'values': [mp]},
