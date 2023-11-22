@@ -103,7 +103,6 @@ def main():
     path_prefix = sys.argv[1]
     workspace = sys.argv[2]
     resources = ['hg19.fa', 'hg19.fa.fai', 'Ens_to_NM.tab', 'genes.refGene', 'transcript_cds.json']
-    sentence_transformer_models = ['icd_o_sentence_transformer_128_dim_model', 'sentence_transformer_128_dim_model']
 
     print('start upload & register resources')
     for r in resources:
@@ -111,27 +110,6 @@ def main():
         dst = os.path.join('/report-parser', r)
         drs_upload(workspace, src, dst, False)
         drs_register(workspace, src, 'file-blob', ['report-parser'])
-
-    print('start upload & register sentence_transformer_models')
-    for m in sentence_transformer_models:
-        src = os.path.join(path_prefix, m)
-        dst = os.path.join('/sentence_transformer_models', m)
-        drs_upload(workspace, src, dst, True)
-        drs_register(workspace, src, 'dir-blob', ['sentence_transformer_models'])
-
-    # print('start upload & register TRS')
-    # trs_create('report-parser', 'Parse Oncology PDF reports, add ICD-10 and ICD-O for diagnosis', 'report-parser')
-    #
-    # tool_id = 'trs_report-parser'
-    # image_name = ''
-    # registry = ''
-    # size = 0
-    # checksum = ''
-    # trs_version(workspace, tool_id, '1.0', image_name, registry, size, checksum)
-    #
-    # working_dir = '`pwd`/seqslab-workflows'
-    # exec_json = ''
-    # trs_register(tool_id, '1.0', working_dir, exec_json)
 
     print('Installation complete.')
 
